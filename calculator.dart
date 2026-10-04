@@ -8,6 +8,20 @@ class CalcException implements Exception {
   String toString() => message;
 }
 
+/// ANSI Escape codes for adding colors to terminal output
+class Ansi {
+  static const reset = '\x1B[0m';
+  static const bold = '\x1B[1m';
+  static const red = '\x1B[31m';
+  static const green = '\x1B[32m';
+  static const yellow = '\x1B[33m';
+  static const blue = '\x1B[34m';
+  static const magenta = '\x1B[35m';
+  static const cyan = '\x1B[36m';
+  static const gray = '\x1B[90m';
+  static const clearScreen = '\x1B[2J\x1B[H';
+}
+
 /// Recursive-descent parser: + - * / % ^, parentheses, unary minus,
 /// constants (pi, e, ans) and functions (sqrt, abs, sin, cos, tan, ln, log).
 class Parser {
@@ -103,7 +117,8 @@ class Parser {
         pos++;
       }
       final n = double.tryParse(src.substring(start, pos));
-      if (n == null) throw CalcException("Invalid number '${src.substring(start, pos)}'");
+      if (n == null)
+        throw CalcException("Invalid number '${src.substring(start, pos)}'");
       return n;
     }
 
@@ -158,12 +173,29 @@ String format(double v) {
 
 void printHelp() {
   print('''
-Operators : +  -  *  /  %  ^  ( )
-Constants : pi, e, ans (last result)
-Functions : sqrt() abs() sin() cos() tan() ln() log()
-Commands  : history, help, clear, exit
-Example   : 2 * (3 + 4) ^ 2 - sqrt(16)
+${Ansi.cyan}${Ansi.bold}=== Dart CLI Calculator ===${Ansi.reset}
+
+  ${Ansi.bold}Operators:${Ansi.reset} ${Ansi.yellow}+  -  *  /  %  ^  ( )${Ansi.reset}
+  ${Ansi.bold}Constants:${Ansi.reset} ${Ansi.magenta}pi${Ansi.reset}, ${Ansi.magenta}e${Ansi.reset}, ${Ansi.magenta}ans${Ansi.reset} (last result)
+  ${Ansi.bold}Functions:${Ansi.reset} ${Ansi.blue}sqrt() abs() sin() cos() tan() ln() log()${Ansi.reset}
+  ${Ansi.bold}Commands: ${Ansi.reset} ${Ansi.green}history, help, clear, exit${Ansi.reset}
+  ${Ansi.bold}Example:  ${Ansi.reset} ${Ansi.gray}2 * (3 + 4) ^ 2 - sqrt(16)${Ansi.reset}
 ''');
+}
+
+void printBanner() {
+  print(
+    Ansi.clearScreen +
+        '''
+${Ansi.cyan}${Ansi.bold}    ____             __     ______      __    
+   / __ \\____ ______/ /_   / ____/___ _/ /____
+  / / / / __ `/ ___/ __/  / /   / __ `/ / ___/
+ / /_/ / /_/ / /  / /_   / /___/ /_/ / / /__  
+/_____/\\__,_/_/   \\__/   \\____/\\__,_/_/\\___/  
+${Ansi.reset}
+  ${Ansi.gray}Type ${Ansi.green}"help"${Ansi.gray} for usage, or ${Ansi.green}"exit"${Ansi.gray} to quit.${Ansi.reset}
+''',
+  );
 }
 
 void main(List<String> args) {
@@ -175,15 +207,16 @@ void main(List<String> args) {
     try {
       print(format(Parser(args.join(' '), ans).parse()));
     } on CalcException catch (e) {
-      stderr.writeln('Error: $e');
+      stderr.writeln('${Ansi.red}Error: $e${Ansi.reset}');
       exit(1);
     }
     return;
   }
 
-  print('Dart CLI Calculator — type "help" for usage, "exit" to quit.');
+  printBanner();
+
   while (true) {
-    stdout.write('> ');
+    stdout.write('${Ansi.cyan}${Ansi.bold}calc>${Ansi.reset} ');
     final line = stdin.readLineSync()?.trim();
     if (line == null) break;
     if (line.isEmpty) continue;
@@ -191,7 +224,7 @@ void main(List<String> args) {
     switch (line.toLowerCase()) {
       case 'exit':
       case 'quit':
-        print('Goodbye!');
+        print('${Ansi.green}Goodbye!${Ansi.reset}');
         return;
       case 'help':
         printHelp();
@@ -199,12 +232,16 @@ void main(List<String> args) {
       case 'clear':
         history.clear();
         ans = 0;
-        print('History cleared.');
+        print(Ansi.clearScreen);
+        printBanner();
         continue;
       case 'history':
-        if (history.isEmpty) print('(empty)');
-        for (var i = 0; i < history.length; i++) {
-          print('${i + 1}. ${history[i]}');
+        if (history.isEmpty) {
+          print('  ${Ansi.gray}(empty)${Ansi.reset}');
+        } else {
+          for (var i = 0; i < history.length; i++) {
+            print('  ${Ansi.gray}${i + 1}.${Ansi.reset} ${history[i]}');
+          }
         }
         continue;
     }
@@ -214,9 +251,11 @@ void main(List<String> args) {
       ans = result;
       final out = format(result);
       history.add('$line = $out');
-      print(out);
+      print(
+        '  ${Ansi.gray}=${Ansi.reset} ${Ansi.green}${Ansi.bold}$out${Ansi.reset}\n',
+      );
     } on CalcException catch (e) {
-      print('Error: $e');
+      print('  ${Ansi.red}Error: ${e.message}${Ansi.reset}\n');
     }
   }
 }
